@@ -304,7 +304,8 @@ void vw_tx_start()
    vw_tx_sample = 0;
 
    // Enable the transmitter hardware
-   //digitalWrite(ptt.gpio, true ^ vw_ptt_inverted);
+   if (ptt.gpio > 0)
+      gpio_set_value(ptt.gpio, true ^ vw_ptt_inverted);
 
    // Next tick interrupt will send the first bit
    vw_tx_enabled = true;
@@ -314,8 +315,9 @@ void vw_tx_start()
 void vw_tx_stop()
 {
    // Disable the transmitter hardware
-   //digitalWrite(ptt.gpio, false ^ vw_ptt_inverted);
-   //digitalWrite(transmitter.gpio, false);
+   if (ptt.gpio > 0)
+      gpio_set_value(ptt.gpio, false ^ vw_ptt_inverted);
+   gpio_set_value(transmitter.gpio, false);
 
    // No more ticks for the transmitter
    vw_tx_enabled = false;
@@ -465,7 +467,6 @@ uint8_t vw_get_message(uint8_t* buf, uint8_t* len)
 // This is the interrupt service routine called when timer1 overflows
 // Its job is to output the next bit from the transmitter (every 8 calls)
 // and to call the PLL code if the receiver is enabled
-//ISR(SIG_OUTPUT_COMPARE1A)
 void vw_int_handler(void)
 {
    if (vw_rx_enabled && !vw_tx_enabled) 
@@ -488,7 +489,7 @@ void vw_int_handler(void)
       }
       else
       {
-         //digitalWrite(transmitter.gpio, vw_tx_buf[vw_tx_index] & (1 << vw_tx_bit++));
+         gpio_set_value(transmitter.gpio, vw_tx_buf[vw_tx_index] & (1 << vw_tx_bit++));
          if (vw_tx_bit >= 6)
          {
             vw_tx_bit = 0;
@@ -590,13 +591,6 @@ int vw_setup(void)
 
    printk(KERN_INFO "Current receiver1 value: %d\n", gpio_get_value(receiver.gpio));
 
-#if 0
-   /* TODO: handle TX */
-   pinMode(transmitter.gpio, OUTPUT);
-   pinMode(ptt.gpio, OUTPUT);
-   digitalWrite(ptt.gpio, vw_ptt_inverted);
-#endif
-
    return 0;
 }
 
@@ -604,7 +598,6 @@ void vw_shutdown(void)
 {
 
 #if LED_STATUS
-   /* turn LED off */
    gpio_set_value(led.gpio, 0);  /* led off */
    gpio_free(led.gpio);
 #endif
