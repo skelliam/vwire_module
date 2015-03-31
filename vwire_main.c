@@ -34,15 +34,30 @@ static unsigned char tx_gpio = 0;
 static unsigned char rx_gpio = 0;
 static unsigned char ptt_gpio = 0;
 static unsigned char ptt_invert = 0;
+static unsigned char verbose = 0;
+#if (LED_STATUS)
+static unsigned char led_gpio = 0;
+#endif
 
+/* High speed loop */
+/* The high speed loop samples the rx pin and sets thx tx pin.
+ * --> 8 samples for each bit 
+ * --> 2000 bits/sec (default)
+ * --> 16,000 samples/sec
+ */
 enum hrtimer_restart sample_timer_callback(struct hrtimer *timer) 
 {
    ktime_t ktime;
+
+   /* This is a high speed sampling, at 2000 baud this loop will run 
+    * every 62.5 us.  Higher speeds generally mean poorer reception,
+    * and I'm not sure how fast we can push this... --wjs */
 
    /* schedule the next timer hit now */
    ktime = ktime_set(0, DelayFromBaudrate(baudrate));
    hrtimer_forward_now(timer, ktime);
 
+   /* Mike McCauley's VirtualWire ported from Arduino */
    vw_int_handler();
 
    /* restart the timer */
@@ -65,6 +80,9 @@ static int __init vwire_kmod_init(void)
    vw_set_rx_pin(rx_gpio);
    vw_set_ptt_pin(ptt_gpio);
    vw_set_ptt_inverted(ptt_invert);
+#if LED_STATUS
+   vw_set_led_pin(led_gpio);
+#endif
 
 
    /* call setup */
@@ -116,6 +134,12 @@ MODULE_PARM_DESC(ptt_gpio, "The GPIO pin to use for PTT (push-to-transmit), 0=di
 
 module_param(ptt_invert, byte, 0644);
 MODULE_PARM_DESC(ptt_invert, "Invert the PTT signal");
+
+module_param(led_gpio, byte, 0644);
+MODULE_PARM_DESC(led_gpio, "The GPIO pin to use to drive a status LED, 0=disabled");
+
+module_param(verbose, byte, 0644);
+MODULE_PARM_DESC(verbose, "Put more verbose debugging info to kernel log");
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("William Skellenger (wskellenger@gmail.com)");

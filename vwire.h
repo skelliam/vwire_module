@@ -194,6 +194,12 @@ extern void vw_set_rx_pin(uint8_t pin);
 /// \param[in] pin The Arduino pin number to enable the transmitter. Defaults to 10.
 extern void vw_set_ptt_pin(uint8_t pin);
 
+// Set the digital IO pin to enable a status LED
+extern void vw_set_led_pin(uint8_t pin);
+
+// Set verbose debugging 
+extern void vw_set_verbose_debug(uint8_t val);
+
 /// By default the PTT pin goes high when the transmitter is enabled.
 /// This flag forces it low when the transmitter is enabled.
 /// \param[in] inverted True to invert PTT

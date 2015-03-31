@@ -57,6 +57,9 @@ static uint16_t vw_tx_msg_count = 0;
 // The digital IO pin number of the press to talk, enables the transmitter hardware
 static uint8_t vw_ptt_inverted = 0;
 
+// Put more debugging info to kernel log
+static uint8_t vw_verbose_debug = 0;
+
 // Current receiver sample
 static uint8_t vw_rx_sample = 0;
 
@@ -167,6 +170,19 @@ void vw_set_ptt_inverted(uint8_t inverted)
    vw_ptt_inverted = inverted;
 }
 
+#if LED_STATUS
+// Set the LED status pin 
+void vw_set_led_pin(uint8_t pin)
+{
+   led.gpio = pin;
+}
+#endif
+
+void vw_set_verbose_debug(uint8_t val)
+{
+   vw_verbose_debug = val;
+}
+
 // Called 8 times per bit period
 // Phase locked loop tries to synchronise with the transmitter so that bit 
 // transitions occur at about the time vw_rx_pll_ramp is 0;
@@ -231,19 +247,20 @@ void vw_pll()
                   // Stupid message length, drop the whole thing
                   vw_rx_active = false;
                   vw_rx_bad++;
-#if VERBOSE_DMESG
-                  printk(KERN_INFO "Dropping message...\n");
-#endif
+
+                  if (vw_verbose_debug)
+                     printk(KERN_INFO "Dropping message...\n");
+#if LED_STATUS
                   gpio_set_value(led.gpio, 0); 
+#endif
                   return;
                }
             }
 
             vw_rx_buf[vw_rx_len++] = this_byte;
 
-#if VERBOSE_DMESG
-            printk(KERN_INFO "this_byte: %02x\n", this_byte);
-#endif
+            if (vw_verbose_debug)
+               printk(KERN_INFO "this_byte: %02x\n", this_byte);
 
             if (vw_rx_len >= vw_rx_count)
             {
@@ -251,9 +268,9 @@ void vw_pll()
                vw_rx_active = false;
                vw_rx_good++;
                vw_rx_done = true; // Better come get it before the next one starts
-#if VERBOSE_DMESG
-               printk(KERN_INFO "Rx all bytes. vw_rx_good: %d\n", vw_rx_good);
-#endif
+
+               if (vw_verbose_debug)
+                  printk(KERN_INFO "Rx all bytes. vw_rx_good: %d\n", vw_rx_good);
             }
             vw_rx_bit_count = 0;
          }
@@ -261,11 +278,12 @@ void vw_pll()
       // Not in a message, see if we have a start symbol
       else if (vw_rx_bits == 0xb38)
       {
+#if LED_STATUS
          gpio_set_value(led.gpio, 1); 
-
-#if VERBOSE_DMESG
-         printk(KERN_INFO "We have a start symbol...\n");
 #endif
+
+         if (vw_verbose_debug)
+            printk(KERN_INFO "We have a start symbol...\n");
 
          // Have start symbol, start collecting message
          vw_rx_active = true;
@@ -528,7 +546,7 @@ int vw_setup(void)
       }
       else 
       {
-         printk(KERN_INFO "Requested GPIO %d for %s\n", led.gpio, led.label);
+         printk(KERN_INFO "Requested GPIO %d for %s\n", receiver.gpio, receiver.label);
       }
    }
 
