@@ -30,6 +30,10 @@
 
 static struct hrtimer sample_timer;
 static unsigned short baudrate = 2000;  /* speed in bits per sec */
+static unsigned char tx_gpio = 0;
+static unsigned char rx_gpio = 0;
+static unsigned char ptt_gpio = 0;
+static unsigned char ptt_invert = 0;
 
 enum hrtimer_restart sample_timer_callback(struct hrtimer *timer) 
 {
@@ -56,7 +60,15 @@ static int __init vwire_kmod_init(void)
    vw_tx_stop();
    vw_rx_stop();
 
-   ret = vw_setup();  /* perhaps pass sysfs values ? */
+   /* init pins */
+   vw_set_tx_pin(tx_gpio);
+   vw_set_rx_pin(rx_gpio);
+   vw_set_ptt_pin(ptt_gpio);
+   vw_set_ptt_inverted(ptt_invert);
+
+
+   /* call setup */
+   ret = vw_setup();
 
    /* init high res timer */
    ktime = ktime_set(0, DelayFromBaudrate(baudrate));
@@ -91,6 +103,19 @@ module_exit(vwire_kmod_exit);
 
 /* user can adjust baudrate */
 module_param(baudrate, ushort, 0644);
+MODULE_PARM_DESC(baudrate, "The transmission speed in bits/sec, default 2000");
+
+module_param(rx_gpio, byte, 0644);
+MODULE_PARM_DESC(rx_gpio, "The GPIO pin to use for the receiver, 0=disabled");
+
+module_param(tx_gpio, byte, 0644);
+MODULE_PARM_DESC(tx_gpio, "The GPIO pin to use for the transmitter, 0=disabled");
+
+module_param(ptt_gpio, byte, 0644);
+MODULE_PARM_DESC(ptt_gpio, "The GPIO pin to use for PTT (push-to-transmit), 0=disabled");
+
+module_param(ptt_invert, byte, 0644);
+MODULE_PARM_DESC(ptt_invert, "Invert the PTT signal");
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("William Skellenger (wskellenger@gmail.com)");
