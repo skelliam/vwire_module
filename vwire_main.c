@@ -66,7 +66,7 @@ enum hrtimer_restart sample_timer_callback(struct hrtimer *timer)
 
 static int __init vwire_kmod_init(void)
 {
-   int ret = 0;
+   int err = 0;
    ktime_t ktime;
 
    printk(KERN_INFO "%s\n", __func__);
@@ -84,9 +84,9 @@ static int __init vwire_kmod_init(void)
    vw_set_led_pin(led_gpio);
 #endif
 
-
    /* call setup */
-   ret = vw_setup();
+   err = vw_setup();
+   if (err) goto fail_setup;
 
    /* init high res timer */
    ktime = ktime_set(0, DelayFromBaudrate(baudrate));
@@ -97,8 +97,13 @@ static int __init vwire_kmod_init(void)
    vw_rx_start();
 
    printk(KERN_INFO "Timer will fire callback in %ld nanosecs\n", DelayFromBaudrate(baudrate));
+   return 0;  /* success */
 
-   return ret;
+fail_timer:
+fail_setup:
+   printk(KERN_INFO "vw_setup() failed\n");
+
+   return err;
 }
 
 static void __exit vwire_kmod_exit(void)
@@ -143,6 +148,4 @@ MODULE_PARM_DESC(verbose, "Put more verbose debugging info to kernel log");
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("William Skellenger (wskellenger@gmail.com)");
-MODULE_DESCRIPTION("VirtualWire driver");
-
-
+MODULE_DESCRIPTION("VirtualWire driver, intended for Raspberry Pi");
