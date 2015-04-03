@@ -513,6 +513,8 @@ int vw_setup(void)
 {
    int err = 0;
 
+   vw_cleanup();  /* free all gpios */
+
 #if LED_STATUS
    // register LED gpio
    if (led.gpio > 0)
@@ -577,18 +579,23 @@ int vw_setup(void)
 
 }
 
+void vw_cleanup(void)
+{
+   gpio_free(ptt.gpio);
+   gpio_free(transmitter.gpio);
+   gpio_free(receiver.gpio);
+#if (LED_STATUS)
+   gpio_free(led.gpio);
+#endif
+}
+
 void vw_shutdown(void)
 {
 
 #if LED_STATUS
    gpio_set_value(led.gpio, 0);  /* led off */
-   gpio_free(led.gpio);
 #endif
-
-   /* unregister gpio use */
-   gpio_free(transmitter.gpio);
-   gpio_free(ptt.gpio);
-   gpio_free(receiver.gpio);
+   vw_cleanup();
 }
 
 

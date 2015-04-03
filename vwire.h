@@ -210,6 +210,9 @@ extern void vw_set_ptt_inverted(uint8_t inverted);
 /// Must call vw_rx_start() before you will get any messages
 extern  int vw_setup(void);
 
+/// Cleanup all of the gpios.  Cannot be called externally.
+void vw_cleanup(void);
+
 /// Start the Phase Locked Loop listening to the receiver
 /// Must do this before you can receive any messages
 /// When a message is available (good checksum or not), vw_have_message();
