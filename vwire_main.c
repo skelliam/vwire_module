@@ -88,18 +88,21 @@ static int __init vwire_kmod_init(void)
    err = vw_setup();
    if (err) goto fail_setup;
 
-   /* init high res timer */
+   /* start the sample loop */
    ktime = ktime_set(0, DelayFromBaudrate(baudrate));
    hrtimer_init(&sample_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
    sample_timer.function = &sample_timer_callback;
-   hrtimer_start(&sample_timer, ktime, HRTIMER_MODE_REL);
+   err = hrtimer_start(&sample_timer, ktime, HRTIMER_MODE_REL);
+   if (err) goto fail_timer;
 
+   /* start receiving */
    vw_rx_start();
 
    printk(KERN_INFO "Timer will fire callback in %ld nanosecs\n", DelayFromBaudrate(baudrate));
    return 0;  /* success */
 
 fail_timer:
+   printk(KERN_INFO "could not start highres timer, was already running\n");
 fail_setup:
    printk(KERN_INFO "vw_setup() failed\n");
 
