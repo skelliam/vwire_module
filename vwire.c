@@ -249,7 +249,7 @@ void vw_pll()
                   vw_rx_bad++;
 
                   if (vw_verbose_debug)
-                     printk(KERN_DEBUG "Dropping message...\n");
+                     printk(KERN_DEBUG VWIRE_DRV_NAME ": Dropping message...\n");
 #if LED_STATUS
                   gpio_set_value(led.gpio, 0); 
 #endif
@@ -260,7 +260,7 @@ void vw_pll()
             vw_rx_buf[vw_rx_len++] = this_byte;
 
             if (vw_verbose_debug)
-               printk(KERN_DEBUG "this_byte: %02x\n", this_byte);
+               printk(KERN_DEBUG VWIRE_DRV_NAME ": this_byte: %02x\n", this_byte);
 
             if (vw_rx_len >= vw_rx_count)
             {
@@ -270,7 +270,7 @@ void vw_pll()
                vw_rx_done = true; // Better come get it before the next one starts
 
                if (vw_verbose_debug)
-                  printk(KERN_DEBUG "Rx all bytes. vw_rx_good: %d\n", vw_rx_good);
+                  printk(KERN_DEBUG VWIRE_DRV_NAME ": Rx all bytes. vw_rx_good: %d\n", vw_rx_good);
             }
             vw_rx_bit_count = 0;
          }
@@ -283,7 +283,7 @@ void vw_pll()
 #endif
 
          if (vw_verbose_debug)
-            printk(KERN_DEBUG "We have a start symbol...\n");
+            printk(KERN_DEBUG VWIRE_DRV_NAME ": We have a start symbol...\n");
 
          // Have start symbol, start collecting message
          vw_rx_active = true;
@@ -523,7 +523,7 @@ int vw_setup(void)
       led.label = "LED 1";
       err = gpio_request_one(led.gpio, led.flags, led.label);
       if (err) goto fail_led;
-      printk(KERN_INFO "Requested GPIO %d for %s\n", led.gpio, led.label);
+      printk(KERN_INFO VWIRE_DRV_NAME ": Requested GPIO %d for %s\n", led.gpio, led.label);
    }
 #endif
 
@@ -534,7 +534,7 @@ int vw_setup(void)
       receiver.label = "RX 1";
       err = gpio_request_one(receiver.gpio, receiver.flags, receiver.label);
       if (err) goto fail_receiver;
-      printk(KERN_INFO "Requested GPIO %d for %s\n", receiver.gpio, receiver.label);
+      printk(KERN_INFO VWIRE_DRV_NAME ": Requested GPIO %d for %s\n", receiver.gpio, receiver.label);
    }
 
    // register transmitter gpio
@@ -544,7 +544,7 @@ int vw_setup(void)
       transmitter.label = "TX 1";
       err = gpio_request_one(transmitter.gpio, transmitter.flags, transmitter.label);
       if (err) goto fail_transmitter;
-      printk(KERN_INFO "Requested GPIO %d for %s\n", transmitter.gpio, transmitter.label);
+      printk(KERN_INFO VWIRE_DRV_NAME ": Requested GPIO %d for %s\n", transmitter.gpio, transmitter.label);
    }
 
    // register ptt gpio
@@ -554,7 +554,7 @@ int vw_setup(void)
       ptt.label = "PTT 1";
       err = gpio_request_one(ptt.gpio, ptt.flags, ptt.label);
       if (err) goto fail_ptt;
-      printk(KERN_INFO "Requested GPIO %d for %s\n", ptt.gpio, ptt.label);
+      printk(KERN_INFO VWIRE_DRV_NAME ": Requested GPIO %d for %s\n", ptt.gpio, ptt.label);
    }
 
    return 0;  /* success */
@@ -562,17 +562,17 @@ int vw_setup(void)
 
    /* back everything out if failure */
    fail_ptt:
-      printk(KERN_ERR "Unable to request GPIOs for ptts: %d\n", err);
+      printk(KERN_ERR VWIRE_DRV_NAME ": Unable to request GPIOs for ptts: %d\n", err);
       gpio_free(ptt.gpio);
    fail_transmitter:
-      printk(KERN_ERR "Unable to request GPIOs for transmitters: %d\n", err);
+      printk(KERN_ERR VWIRE_DRV_NAME ": Unable to request GPIOs for transmitters: %d\n", err);
       gpio_free(transmitter.gpio);
    fail_receiver:
-      printk(KERN_ERR "Unable to request GPIOs for receivers: %d\n", err);
+      printk(KERN_ERR VWIRE_DRV_NAME ": Unable to request GPIOs for receivers: %d\n", err);
       gpio_free(receiver.gpio);
 #if (LED_STATUS)
    fail_led:
-      printk(KERN_ERR "Unable to request GPIOs for LED: %d\n", err);
+      printk(KERN_ERR VWIRE_DRV_NAME ": Unable to request GPIOs for LED: %d\n", err);
       gpio_free(led.gpio);
 #endif
    return err;

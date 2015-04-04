@@ -28,7 +28,11 @@
 #include "vwire_config.h"
 #include "vwire.h"
 
-static struct hrtimer sample_timer;
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("William Skellenger (wskellenger@gmail.com)");
+MODULE_DESCRIPTION("VirtualWire driver, intended for Raspberry Pi");
+
+static struct hrtimer vwire_sample_timer;
 static unsigned short baudrate = 2000;  /* speed in bits per sec */
 static unsigned char tx_gpio = 0;
 static unsigned char rx_gpio = 0;
@@ -45,7 +49,7 @@ static unsigned char led_gpio = 0;
  * --> 2000 bits/sec (default)
  * --> 16,000 samples/sec
  */
-enum hrtimer_restart sample_timer_callback(struct hrtimer *timer) 
+enum hrtimer_restart vwire_sample_timer_callback(struct hrtimer *timer) 
 {
    ktime_t ktime;
 
@@ -64,12 +68,12 @@ enum hrtimer_restart sample_timer_callback(struct hrtimer *timer)
    return HRTIMER_RESTART;
 }
 
-static int __init vwire_kmod_init(void)
+static int __init vwire_init_module(void)
 {
    int err = 0;
    ktime_t ktime;
 
-   printk(KERN_INFO "%s\n", __func__);
+   printk(KERN_INFO VWIRE_DRV_NAME ": %s\n", __func__);
 
    /* to start disable tx and rx */
    vw_tx_stop();
@@ -90,42 +94,42 @@ static int __init vwire_kmod_init(void)
 
    /* start the sample loop */
    ktime = ktime_set(0, DelayFromBaudrate(baudrate));
-   hrtimer_init(&sample_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-   sample_timer.function = &sample_timer_callback;
-   err = hrtimer_start(&sample_timer, ktime, HRTIMER_MODE_REL);
+   hrtimer_init(&vwire_sample_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+   vwire_sample_timer.function = &vwire_sample_timer_callback;
+   err = hrtimer_start(&vwire_sample_timer, ktime, HRTIMER_MODE_REL);
    if (err) goto fail_timer;
 
    /* start receiving */
    vw_rx_start();
 
-   printk(KERN_INFO "Timer will fire callback in %ld nanosecs\n", DelayFromBaudrate(baudrate));
+   printk(KERN_INFO VWIRE_DRV_NAME ": Timer will fire callback in %ld nanosecs\n", DelayFromBaudrate(baudrate));
    return 0;  /* success */
 
 fail_timer:
-   printk(KERN_INFO "could not start highres timer, was already running\n");
+   printk(KERN_INFO VWIRE_DRV_NAME ": could not start highres timer, was already running\n");
 fail_setup:
-   printk(KERN_INFO "vw_setup() failed\n");
+   printk(KERN_INFO VWIRE_DRV_NAME ": vw_setup() failed\n");
 
    return err;
 }
 
-static void __exit vwire_kmod_exit(void)
+static void __exit vwire_cleanup_module(void)
 {
    int ret;
 
-   printk(KERN_INFO "%s\n", __func__);
+   printk(KERN_INFO VWIRE_DRV_NAME ": %s\n", __func__);
 
-   vw_shutdown();
+   (void)vw_shutdown();
 
    /* cancel timer */
-   ret = hrtimer_cancel(&sample_timer);
-   if (ret) printk("The timer was still in use...\n");
+   ret = hrtimer_cancel(&vwire_sample_timer);
+   if (ret) printk(KERN_INFO VWIRE_DRV_NAME ": The timer was still in use...\n");
 
    return;
 }
 
-module_init(vwire_kmod_init);
-module_exit(vwire_kmod_exit);
+module_init(vwire_init_module);
+module_exit(vwire_cleanup_module);
 
 /* user can adjust baudrate */
 module_param(baudrate, ushort, 0644);
@@ -149,6 +153,4 @@ MODULE_PARM_DESC(led_gpio, "The GPIO pin to use to drive a status LED, 0=disable
 module_param(verbose, byte, 0644);
 MODULE_PARM_DESC(verbose, "Put more verbose debugging info to kernel log");
 
-MODULE_LICENSE("GPL");
-MODULE_AUTHOR("William Skellenger (wskellenger@gmail.com)");
-MODULE_DESCRIPTION("VirtualWire driver, intended for Raspberry Pi");
+
