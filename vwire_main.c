@@ -64,12 +64,10 @@ module_param(verbose, byte, 0000);
 MODULE_PARM_DESC(verbose, 
       "Put more verbose debugging info to kernel log.  Can be changed via ioctl().");
 
-#if (LED_STATUS)
 static unsigned char    led_gpio = VWIRE_DEFAULT_LED_GPIO;
 module_param(led_gpio, byte, 0000);
 MODULE_PARM_DESC(led_gpio, 
       "The GPIO pin to use to drive a status LED, 0=disabled.  Can be changed via ioctl().");
-#endif
 
 /* High speed loop */
 /* The high speed loop samples the rx pin and sets thx tx pin.
@@ -112,9 +110,7 @@ static int __init vwire_init_module(void)
    vw_set_rx_pin(rx_gpio);
    vw_set_ptt_pin(ptt_gpio);
    vw_set_ptt_inverted(ptt_invert);
-#if LED_STATUS
    vw_set_led_pin(led_gpio);
-#endif
 
    /* call setup */
    err = vw_setup();
@@ -132,14 +128,10 @@ static int __init vwire_init_module(void)
 
    printk(KERN_INFO VWIRE_DRV_NAME 
          ": VirualWire started: baudrate %d, tx_gpio %d, rx_gpio %d, ptt_gpio %d, ptt_invert %d, verbose %d, "
-#if LED_STATUS
          "led_gpio: %d "
-#endif
          "\n",
          baudrate, tx_gpio, rx_gpio, ptt_gpio, ptt_invert, verbose
-#if LED_STATUS 
          , led_gpio
-#endif
          );
    return 0;  /* success */
 

@@ -3,8 +3,6 @@
 
 
 #define VERBOSE_DMESG  1
-#define LED_STATUS     1
-
 
 /* The name of the driver within the kernel (e.g. shows up in logs, etc...) */
 #define VWIRE_DRV_NAME     "vwire"

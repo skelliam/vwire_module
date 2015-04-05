@@ -28,11 +28,9 @@ static struct gpio transmitter;
 /* the ptt device */
 static struct gpio ptt;
 
-#if (LED_STATUS)
 /* an led (optional) for debugging */
 static struct gpio led;
 static uint8_t LED_STATE = 0;
-#endif
 
 static uint8_t vw_tx_buf[(VW_MAX_MESSAGE_LEN * 2) + VW_HEADER_LEN] = {0x2a, 0x2a, 0x2a, 0x2a, 0x2a, 0x2a, 0x38, 0x2c};
 
@@ -170,13 +168,11 @@ void vw_set_ptt_inverted(uint8_t inverted)
    vw_ptt_inverted = inverted;
 }
 
-#if LED_STATUS
 // Set the LED status pin 
 void vw_set_led_pin(uint8_t pin)
 {
    led.gpio = pin;
 }
-#endif
 
 void vw_set_verbose_debug(uint8_t val)
 {
@@ -250,9 +246,7 @@ void vw_pll()
 
                   if (vw_verbose_debug)
                      printk(KERN_DEBUG VWIRE_DRV_NAME ": Dropping message...\n");
-#if LED_STATUS
                   gpio_set_value(led.gpio, 0); 
-#endif
                   return;
                }
             }
@@ -278,9 +272,7 @@ void vw_pll()
       // Not in a message, see if we have a start symbol
       else if (vw_rx_bits == 0xb38)
       {
-#if LED_STATUS
          gpio_set_value(led.gpio, 1); 
-#endif
 
          if (vw_verbose_debug)
             printk(KERN_DEBUG VWIRE_DRV_NAME ": We have a start symbol...\n");
@@ -515,7 +507,6 @@ int vw_setup(void)
 
    vw_cleanup();  /* free all gpios */
 
-#if LED_STATUS
    // register LED gpio
    if (led.gpio > 0)
    {
@@ -525,7 +516,6 @@ int vw_setup(void)
       if (err) goto fail_led;
       printk(KERN_INFO VWIRE_DRV_NAME ": Requested GPIO %d for %s\n", led.gpio, led.label);
    }
-#endif
 
    // register receiver gpio
    if (receiver.gpio > 0)
@@ -570,11 +560,9 @@ int vw_setup(void)
    fail_receiver:
       printk(KERN_ERR VWIRE_DRV_NAME ": Unable to request GPIOs for receivers: %d\n", err);
       gpio_free(receiver.gpio);
-#if (LED_STATUS)
    fail_led:
       printk(KERN_ERR VWIRE_DRV_NAME ": Unable to request GPIOs for LED: %d\n", err);
       gpio_free(led.gpio);
-#endif
    return err;
 
 }
@@ -584,17 +572,13 @@ void vw_cleanup(void)
    gpio_free(ptt.gpio);
    gpio_free(transmitter.gpio);
    gpio_free(receiver.gpio);
-#if (LED_STATUS)
    gpio_free(led.gpio);
-#endif
 }
 
 void vw_shutdown(void)
 {
 
-#if LED_STATUS
    gpio_set_value(led.gpio, 0);  /* led off */
-#endif
    vw_cleanup();
 }
 
