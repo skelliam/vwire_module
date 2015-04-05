@@ -117,30 +117,6 @@ static ssize_t vwire_dummy_get(struct device *dev,
    return 0;
 }
 
-static ssize_t vwire_set_baudrate(struct device *dev,
-                                  struct device_attribute *attr,
-                                  const char* buf,
-                                  size_t count)
-{
-	long user_baudrate = 0;
-   user_baudrate = LimitErr(kstrtol(buf, 10, &user_baudrate), BAUD_MIN, BAUD_MAX, -EINVAL);
-   if (user_baudrate != -EINVAL) {
-      vwire_baudrate = user_baudrate;
-      printk(KERN_INFO VWIRE_DRV_NAME ": baudrate changed to %d\n", vwire_baudrate); 
-   }
-   else {
-      printk(KERN_INFO VWIRE_DRV_NAME ": tried to set baudrate to %ld which is not allowed\n", user_baudrate);
-   }
-	return count;
-}
-
-static ssize_t vwire_show_baudrate(struct device *dev, 
-                                   struct device_attribute *attr,
-                                   char *buf)
-{
-	return scnprintf(buf, PAGE_SIZE, "%d\n", vwire_baudrate);
-}
-
 static ssize_t vwire_set_message(struct device *dev,
                                struct device_attribute *attr,
                                const char* buf,
@@ -168,7 +144,6 @@ static ssize_t vwire_get_message(struct device *dev,
 
 
 /* define device attributes */
-static DEVICE_ATTR(baudrate, S_IWUSR|S_IRUGO, vwire_show_baudrate, vwire_set_baudrate);
 static DEVICE_ATTR(outbox, S_IWUSR|S_IRUGO, NULL, vwire_set_message);
 static DEVICE_ATTR(inbox, S_IWUSR|S_IRUGO, vwire_get_message, NULL);
 
@@ -185,7 +160,6 @@ static int vwire_fs_init(void)
    device_object = device_create(device_class, NULL, 0, NULL, "VirtualWire");
    err |= IS_ERR(device_object);
 
-   err |= device_create_file(device_object, &dev_attr_baudrate);
    err |= device_create_file(device_object, &dev_attr_inbox);
    err |= device_create_file(device_object, &dev_attr_outbox);
 
@@ -194,7 +168,6 @@ static int vwire_fs_init(void)
 
 static void vwire_fs_cleanup(void)
 {
-   device_remove_file(device_object, &dev_attr_baudrate);
    device_remove_file(device_object, &dev_attr_inbox);
    device_remove_file(device_object, &dev_attr_outbox);
 
