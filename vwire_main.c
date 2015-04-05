@@ -102,6 +102,21 @@ enum hrtimer_restart vwire_sample_timer_callback(struct hrtimer *timer)
 }
 
 /* --- callback functions from sysfs */
+static ssize_t vwire_dummy_set(struct device *dev,
+                                  struct device_attribute *attr,
+                                  const char* buf,
+                                  size_t count)
+{
+   return 0;
+}
+
+static ssize_t vwire_dummy_get(struct device *dev, 
+                                   struct device_attribute *attr,
+                                   char *buf)
+{
+   return 0;
+}
+
 static ssize_t vwire_set_baudrate(struct device *dev,
                                   struct device_attribute *attr,
                                   const char* buf,
@@ -109,7 +124,13 @@ static ssize_t vwire_set_baudrate(struct device *dev,
 {
 	long user_baudrate = 0;
    user_baudrate = LimitErr(kstrtol(buf, 10, &user_baudrate), BAUD_MIN, BAUD_MAX, -EINVAL);
-   vwire_baudrate = user_baudrate;
+   if (user_baudrate != -EINVAL) {
+      vwire_baudrate = user_baudrate;
+      printk(KERN_INFO VWIRE_DRV_NAME ": baudrate changed to %d\n", vwire_baudrate); 
+   }
+   else {
+      printk(KERN_INFO VWIRE_DRV_NAME ": tried to set baudrate to %ld which is not allowed\n", user_baudrate);
+   }
 	return count;
 }
 
@@ -120,9 +141,36 @@ static ssize_t vwire_show_baudrate(struct device *dev,
 	return scnprintf(buf, PAGE_SIZE, "%d\n", vwire_baudrate);
 }
 
+static ssize_t vwire_set_message(struct device *dev,
+                               struct device_attribute *attr,
+                               const char* buf,
+                               size_t count)
+{
+   printk(KERN_INFO VWIRE_DRV_NAME ": going to send message %s\n", buf);
+   return count;
+}
+
+static ssize_t vwire_get_message(struct device *dev, 
+                                  struct device_attribute *attr,
+                                  char *buf)
+{
+   unsigned char len = 20;  /* todo max here */
+
+   if (vw_get_message(buf, &len)) {
+      /* the message should be in buf */
+   }
+   else {
+      return 0;
+   }
+
+   return len;
+}
+
+
 /* define device attributes */
 static DEVICE_ATTR(baudrate, S_IWUSR|S_IRUGO, vwire_show_baudrate, vwire_set_baudrate);
-
+static DEVICE_ATTR(outbox, S_IWUSR|S_IRUGO, NULL, vwire_set_message);
+static DEVICE_ATTR(inbox, S_IWUSR|S_IRUGO, vwire_get_message, NULL);
 
 
 /* --- end callback functions */
@@ -138,6 +186,8 @@ static int vwire_fs_init(void)
    err |= IS_ERR(device_object);
 
    err |= device_create_file(device_object, &dev_attr_baudrate);
+   err |= device_create_file(device_object, &dev_attr_inbox);
+   err |= device_create_file(device_object, &dev_attr_outbox);
 
    return err;
 }
@@ -145,6 +195,9 @@ static int vwire_fs_init(void)
 static void vwire_fs_cleanup(void)
 {
    device_remove_file(device_object, &dev_attr_baudrate);
+   device_remove_file(device_object, &dev_attr_inbox);
+   device_remove_file(device_object, &dev_attr_outbox);
+
    device_destroy(device_class, 0);
    class_destroy(device_class);
 
