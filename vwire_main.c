@@ -101,22 +101,7 @@ enum hrtimer_restart vwire_sample_timer_callback(struct hrtimer *timer)
    return HRTIMER_RESTART;
 }
 
-/* --- callback functions from sysfs */
-static ssize_t vwire_dummy_set(struct device *dev,
-                                  struct device_attribute *attr,
-                                  const char* buf,
-                                  size_t count)
-{
-   return 0;
-}
-
-static ssize_t vwire_dummy_get(struct device *dev, 
-                                   struct device_attribute *attr,
-                                   char *buf)
-{
-   return 0;
-}
-
+/* --- callback functions for sysfs */
 static ssize_t vwire_set_message(struct device *dev,
                                struct device_attribute *attr,
                                const char* buf,
@@ -130,34 +115,39 @@ static ssize_t vwire_get_message(struct device *dev,
                                   struct device_attribute *attr,
                                   char *buf)
 {
-   unsigned char len = 20;  /* todo max here */
+   unsigned char len = VWIRE_MAX_MESSAGE_LEN;  /* todo max here */
 
    if (vw_get_message(buf, &len)) {
-      /* the message should be in buf */
+      /* the message should be in buf and len will be updated */
    }
    else {
-      return 0;
+      len = 0;
    }
 
    return len;
 }
 
+/* --- end callback functions */
 
-/* define device attributes */
+
+
+/* --- define device attributes */
 static DEVICE_ATTR(outbox, S_IWUSR|S_IRUGO, NULL, vwire_set_message);
 static DEVICE_ATTR(inbox, S_IWUSR|S_IRUGO, vwire_get_message, NULL);
 
 
-/* --- end callback functions */
+/* --- end device attributes */
+
+
 
 static int vwire_fs_init(void)
 {
    int err = 0;
 
-   device_class = class_create(THIS_MODULE, "VirtualWire");
+   device_class = class_create(THIS_MODULE, VWIRE_DEV_NAME);
    err |= IS_ERR(device_class);
 
-   device_object = device_create(device_class, NULL, 0, NULL, "VirtualWire");
+   device_object = device_create(device_class, NULL, 0, NULL, VWIRE_DEV_NAME);
    err |= IS_ERR(device_object);
 
    err |= device_create_file(device_object, &dev_attr_inbox);

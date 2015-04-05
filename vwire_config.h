@@ -8,7 +8,7 @@
 #define VWIRE_DRV_NAME     "vwire"
 
 /* The textual part of the device name in /dev */
-#define VWIRE_DEV_NAME     "vwire"
+#define VWIRE_DEV_NAME     "VirtualWire"
 
 #define VWIRE_DEFAULT_BAUD_RATE   (2000)
 #define VWIRE_DEFAULT_RX_GPIO     (13)
@@ -22,6 +22,8 @@
 
 #define BAUD_MIN      (1000)  /* minimum allowed baudrate */
 #define BAUD_MAX      (5000)  /* maximum allowed baudrate */
+
+#define VWIRE_MAX_MESSAGE_LEN     (20)
 
 #define Limit(x, min, max)            ( (x<min)?(min):( (x>max)?(max):(x) ) )
 #define LimitErr(x, min, max, err)    ( (x<min)?(err):( (x>max)?(err):(x) ) )
