@@ -18,12 +18,14 @@
  *
  */
 
+#include <linux/init.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
-#include <linux/init.h>
 #include <linux/hrtimer.h>
 #include <linux/ktime.h>
 #include <linux/gpio.h>
+#include <linux/device.h>
+#include <linux/err.h>
 
 #include "vwire_config.h"
 #include "vwire.h"
@@ -32,42 +34,47 @@ MODULE_LICENSE("GPL");
 MODULE_AUTHOR("William Skellenger (wskellenger@gmail.com)");
 MODULE_DESCRIPTION("VirtualWire driver, intended for Raspberry Pi");
 
-static struct hrtimer   vwire_sample_timer;
+static struct class     *device_class;
+static struct device    *device_object;
 
-static unsigned short   baudrate = VWIRE_DEFAULT_BAUD_RATE;  /* speed in bits per sec */
-module_param(baudrate, ushort, 0000);
-MODULE_PARM_DESC(baudrate, 
+
+static struct hrtimer   vwire_sample_timer;  /* high res timer to sample gpio */
+
+static unsigned short   vwire_baudrate = VWIRE_DEFAULT_BAUD_RATE;  /* speed in bits per sec */
+module_param(vwire_baudrate, ushort, 0000);
+MODULE_PARM_DESC(vwire_baudrate, 
       "The transmission speed in bits/sec, default 2000.  Can be changed via ioctl().");
 
-static unsigned char    tx_gpio = VWIRE_DEFAULT_TX_GPIO;
-module_param(tx_gpio, byte, 0000);
-MODULE_PARM_DESC(tx_gpio, 
+static unsigned char    vwire_tx_gpio = VWIRE_DEFAULT_TX_GPIO;
+module_param(vwire_tx_gpio, byte, 0000);
+MODULE_PARM_DESC(vwire_tx_gpio, 
       "The GPIO pin to use for the transmitter, 0=disabled.  Can be changed via ioctl().");
 
-static unsigned char    rx_gpio = VWIRE_DEFAULT_RX_GPIO;
-module_param(rx_gpio, byte, 0000);
-MODULE_PARM_DESC(rx_gpio, 
+static unsigned char    vwire_rx_gpio = VWIRE_DEFAULT_RX_GPIO;
+module_param(vwire_rx_gpio, byte, 0000);
+MODULE_PARM_DESC(vwire_rx_gpio, 
       "The GPIO pin to use for the receiver, 0=disabled.  Can be changed via ioctl().");
 
-static unsigned char    ptt_gpio = VWIRE_DEFAULT_PTT_GPIO;
-module_param(ptt_gpio, byte, 0000);
-MODULE_PARM_DESC(ptt_gpio, 
+static unsigned char    vwire_ptt_gpio = VWIRE_DEFAULT_PTT_GPIO;
+module_param(vwire_ptt_gpio, byte, 0000);
+MODULE_PARM_DESC(vwire_ptt_gpio, 
       "The GPIO pin to use for PTT (push-to-transmit), 0=disabled.  Can be changed via ioctl().");
 
-static unsigned char    ptt_invert = VWIRE_DEFAULT_PTT_INVERT;
-module_param(ptt_invert, byte, 0000);
-MODULE_PARM_DESC(ptt_invert, 
+static unsigned char    vwire_led_gpio = VWIRE_DEFAULT_LED_GPIO;
+module_param(vwire_led_gpio, byte, 0000);
+MODULE_PARM_DESC(vwire_led_gpio, 
+      "The GPIO pin to use to drive a status LED, 0=disabled.  Can be changed via ioctl().");
+
+static unsigned char    vwire_ptt_invert = VWIRE_DEFAULT_PTT_INVERT;
+module_param(vwire_ptt_invert, byte, 0000);
+MODULE_PARM_DESC(vwire_ptt_invert, 
       "Invert the PTT signal.  Can be changed via ioctl().");
 
-static unsigned char    verbose = VWIRE_DEFAULT_VERBOSE_LOG;
-module_param(verbose, byte, 0000);
-MODULE_PARM_DESC(verbose, 
+static unsigned char    vwire_verbose = VWIRE_DEFAULT_VERBOSE_LOG;
+module_param(vwire_verbose, byte, 0000);
+MODULE_PARM_DESC(vwire_verbose, 
       "Put more verbose debugging info to kernel log.  Can be changed via ioctl().");
 
-static unsigned char    led_gpio = VWIRE_DEFAULT_LED_GPIO;
-module_param(led_gpio, byte, 0000);
-MODULE_PARM_DESC(led_gpio, 
-      "The GPIO pin to use to drive a status LED, 0=disabled.  Can be changed via ioctl().");
 
 /* High speed loop */
 /* The high speed loop samples the rx pin and sets thx tx pin.
@@ -84,7 +91,7 @@ enum hrtimer_restart vwire_sample_timer_callback(struct hrtimer *timer)
     * and I'm not sure how fast we can push this... --wjs */
 
    /* schedule the next timer hit now */
-   ktime = ktime_set(0, DelayFromBaudrate(baudrate));
+   ktime = ktime_set(0, DelayFromBaudrate(vwire_baudrate));
    hrtimer_forward_now(timer, ktime);
 
    /* Mike McCauley's VirtualWire ported from Arduino */
@@ -92,6 +99,60 @@ enum hrtimer_restart vwire_sample_timer_callback(struct hrtimer *timer)
 
    /* restart the timer */
    return HRTIMER_RESTART;
+}
+
+/* --- callback functions from sysfs */
+static ssize_t vwire_set_baudrate(struct device *dev,
+                                  struct device_attribute *attr,
+                                  const char* buf,
+                                  size_t count)
+{
+	long user_baudrate = 0;
+   user_baudrate = LimitErr(kstrtol(buf, 10, &user_baudrate), BAUD_MIN, BAUD_MAX, -EINVAL);
+   vwire_baudrate = user_baudrate;
+	return count;
+}
+
+static ssize_t vwire_show_baudrate(struct device *dev, 
+                                   struct device_attribute *attr,
+                                   char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "%d\n", vwire_baudrate);
+}
+
+/* define device attributes */
+static DEVICE_ATTR(baudrate, S_IWUSR|S_IRUGO, vwire_show_baudrate, vwire_set_baudrate);
+
+
+
+/* --- end callback functions */
+
+static int vwire_fs_init(void)
+{
+   int err = 0;
+
+   device_class = class_create(THIS_MODULE, "VirtualWire");
+   err |= IS_ERR(device_class);
+
+   device_object = device_create(device_class, NULL, 0, NULL, "VirtualWire");
+   err |= IS_ERR(device_object);
+
+   err |= device_create_file(device_object, &dev_attr_baudrate);
+
+   return err;
+}
+
+static void vwire_fs_cleanup(void)
+{
+   device_remove_file(device_object, &dev_attr_baudrate);
+   device_destroy(device_class, 0);
+   class_destroy(device_class);
+
+#if 0
+	device_remove_file(&interface->dev, &dev_attr_blue);
+	device_remove_file(&interface->dev, &dev_attr_red);
+	device_remove_file(&interface->dev, &dev_attr_green);
+#endif
 }
 
 static int __init vwire_init_module(void)
@@ -106,18 +167,22 @@ static int __init vwire_init_module(void)
    vw_rx_stop();
 
    /* init pins */
-   vw_set_tx_pin(tx_gpio);
-   vw_set_rx_pin(rx_gpio);
-   vw_set_ptt_pin(ptt_gpio);
-   vw_set_ptt_inverted(ptt_invert);
-   vw_set_led_pin(led_gpio);
+   vw_set_tx_pin(vwire_tx_gpio);
+   vw_set_rx_pin(vwire_rx_gpio);
+   vw_set_ptt_pin(vwire_ptt_gpio);
+   vw_set_ptt_inverted(vwire_ptt_invert);
+   vw_set_led_pin(vwire_led_gpio);
+
+   /* set up sysfs */
+   err = vwire_fs_init();
+   if (err) goto fail_fs_init;
 
    /* call setup */
    err = vw_setup();
    if (err) goto fail_setup;
 
    /* start the sample loop */
-   ktime = ktime_set(0, DelayFromBaudrate(baudrate));
+   ktime = ktime_set(0, DelayFromBaudrate(vwire_baudrate));
    hrtimer_init(&vwire_sample_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
    vwire_sample_timer.function = &vwire_sample_timer_callback;
    err = hrtimer_start(&vwire_sample_timer, ktime, HRTIMER_MODE_REL);
@@ -127,18 +192,17 @@ static int __init vwire_init_module(void)
    vw_rx_start();
 
    printk(KERN_INFO VWIRE_DRV_NAME 
-         ": VirualWire started: baudrate %d, tx_gpio %d, rx_gpio %d, ptt_gpio %d, ptt_invert %d, verbose %d, "
-         "led_gpio: %d "
-         "\n",
-         baudrate, tx_gpio, rx_gpio, ptt_gpio, ptt_invert, verbose
-         , led_gpio
-         );
+         ": VirualWire started: baudrate %d, vwire_tx_gpio %d, vwire_rx_gpio %d, vwire_ptt_gpio %d, vwire_led_gpio %d, vwire_ptt_invert %d, vwire_verbose %d \n",
+         vwire_baudrate, vwire_tx_gpio, vwire_rx_gpio, vwire_ptt_gpio, vwire_led_gpio, vwire_ptt_invert, vwire_verbose);
    return 0;  /* success */
 
 fail_timer:
-   printk(KERN_INFO VWIRE_DRV_NAME ": could not start highres timer, was already running\n");
+   printk(KERN_INFO VWIRE_DRV_NAME ": unrolling highres timer setup\n");
 fail_setup:
-   printk(KERN_INFO VWIRE_DRV_NAME ": vw_setup() failed\n");
+   printk(KERN_INFO VWIRE_DRV_NAME ": unrolling vw_setup()\n");
+fail_fs_init:
+   printk(KERN_INFO VWIRE_DRV_NAME ": unrolling sysfs init\n");
+   vwire_fs_cleanup();
 
    return err;
 }
@@ -149,7 +213,8 @@ static void __exit vwire_cleanup_module(void)
 
    printk(KERN_INFO VWIRE_DRV_NAME ": %s\n", __func__);
 
-   (void)vw_shutdown();
+   vw_shutdown();
+   vwire_fs_cleanup();  
 
    /* cancel timer */
    ret = hrtimer_cancel(&vwire_sample_timer);
