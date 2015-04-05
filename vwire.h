@@ -247,7 +247,7 @@ extern uint8_t vw_wait_rx_max(unsigned long milliseconds);
 /// \param[in] buf Pointer to the data to transmit
 /// \param[in] len Number of octetes to transmit
 /// \return true if the message was accepted for transmission, false if the message is too long (>VW_MAX_MESSAGE_LEN - 3)
-extern uint8_t vw_send(uint8_t* buf, uint8_t len);
+extern uint8_t vw_send(const uint8_t* buf, uint8_t len);
 
 // Returns true if an unread message is available
 /// \return true if a message is available to read

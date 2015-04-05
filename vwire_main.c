@@ -71,10 +71,6 @@ MODULE_PARM_DESC(vwire_ptt_invert,
       "Invert the PTT signal.");
 
 static unsigned char    vwire_verbose = VWIRE_DEFAULT_VERBOSE_LOG;
-module_param(vwire_verbose, byte, 0000);
-MODULE_PARM_DESC(vwire_verbose, 
-      "Put more verbose debugging info to kernel log.");
-
 
 /* High speed loop */
 /* The high speed loop samples the rx pin and sets thx tx pin.
@@ -102,12 +98,21 @@ enum hrtimer_restart vwire_sample_timer_callback(struct hrtimer *timer)
 }
 
 /* --- callback functions for sysfs */
-static ssize_t vwire_set_message(struct device *dev,
+static ssize_t vwire_send_message(struct device *dev,
                                  struct device_attribute *attr,
                                  const char* buf,
                                  size_t count)
 {
-   printk(KERN_INFO VWIRE_DRV_NAME ": going to send message %s\n", buf);
+   
+   if (vw_send(buf, count)) {
+      /* the message was sent */
+      printk(KERN_INFO VWIRE_DRV_NAME ": sent message %s\n", buf);
+   }
+   else {
+      /* there was a problem */
+      printk(KERN_INFO VWIRE_DRV_NAME ": message was not sent \n");
+   }
+
    return count;
 }
 
@@ -159,9 +164,9 @@ static ssize_t vwire_get_verbose(struct device *dev,
 
 
 /* --- define device attributes */
-static DEVICE_ATTR(outbox, 0644, NULL, vwire_set_message);  /* write only */
-static DEVICE_ATTR(inbox, 0444, vwire_get_message, NULL);   /* read only */
-static DEVICE_ATTR(verbose, 0644, vwire_get_verbose, vwire_set_verbose);  /* root rw, others read */
+static DEVICE_ATTR(send, S_IWUSR, NULL, vwire_send_message);  /* write only */
+static DEVICE_ATTR(receive, S_IRUSR, vwire_get_message, NULL);   /* read only */
+static DEVICE_ATTR(verbose, S_IRUSR|S_IWUSR, vwire_get_verbose, vwire_set_verbose);  /* root rw, others read */
 
 
 /* --- end device attributes */
@@ -178,8 +183,8 @@ static int vwire_fs_init(void)
    device_object = device_create(device_class, NULL, 0, NULL, VWIRE_DEV_NAME);
    err |= IS_ERR(device_object);
 
-   err |= device_create_file(device_object, &dev_attr_inbox);
-   err |= device_create_file(device_object, &dev_attr_outbox);
+   err |= device_create_file(device_object, &dev_attr_receive);
+   err |= device_create_file(device_object, &dev_attr_send);
    err |= device_create_file(device_object, &dev_attr_verbose);
 
    return err;
@@ -187,8 +192,8 @@ static int vwire_fs_init(void)
 
 static void vwire_fs_cleanup(void)
 {
-   device_remove_file(device_object, &dev_attr_inbox);
-   device_remove_file(device_object, &dev_attr_outbox);
+   device_remove_file(device_object, &dev_attr_receive);
+   device_remove_file(device_object, &dev_attr_send);
    device_remove_file(device_object, &dev_attr_verbose);
 
    device_destroy(device_class, 0);

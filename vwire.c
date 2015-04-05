@@ -376,7 +376,7 @@ uint8_t vw_wait_rx_max(unsigned long milliseconds)
 // into vw_tx_buf
 // The message is raw bytes, with no packet structure imposed
 // It is transmitted preceded a byte count and followed by 2 FCS bytes
-uint8_t vw_send(uint8_t* buf, uint8_t len)
+uint8_t vw_send(const uint8_t* buf, uint8_t len)
 {
    uint8_t i;
    uint8_t index = 0;

@@ -8,7 +8,7 @@
 #define VWIRE_DRV_NAME     "vwire"
 
 /* The textual part of the device name in /dev */
-#define VWIRE_DEV_NAME     "VirtualWire"
+#define VWIRE_DEV_NAME     "vwire"
 
 #define VWIRE_DEFAULT_BAUD_RATE   (2000)
 #define VWIRE_DEFAULT_RX_GPIO     (13)
