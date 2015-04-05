@@ -1,15 +1,15 @@
 /*
- * VirtualWire driver
+ * VirtualWire kernel driver
  *
- * Author:
+ * Module author:
  * 	William Skellenger (wskellenger@gmail.com)
  *
  * Originally an Arduino library by Mike McCauley (mikem@airspayce.com)
- * All I've done is adapt this to run in the Linux kernel for RaspberryPi 
+ * All I've done is adapt this to run in the Linux kernel for RaspberryPi.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.U
+ * may be copied, distributed, and modified under those terms.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -32,15 +32,43 @@ MODULE_LICENSE("GPL");
 MODULE_AUTHOR("William Skellenger (wskellenger@gmail.com)");
 MODULE_DESCRIPTION("VirtualWire driver, intended for Raspberry Pi");
 
-static struct hrtimer vwire_sample_timer;
-static unsigned short baudrate = 2000;  /* speed in bits per sec */
-static unsigned char tx_gpio = 0;
-static unsigned char rx_gpio = 0;
-static unsigned char ptt_gpio = 0;
-static unsigned char ptt_invert = 0;
-static unsigned char verbose = 0;
+static struct hrtimer   vwire_sample_timer;
+
+static unsigned short   baudrate = VWIRE_DEFAULT_BAUD_RATE;  /* speed in bits per sec */
+module_param(baudrate, ushort, 0000);
+MODULE_PARM_DESC(baudrate, 
+      "The transmission speed in bits/sec, default 2000.  Can be changed via ioctl().");
+
+static unsigned char    tx_gpio = VWIRE_DEFAULT_TX_GPIO;
+module_param(tx_gpio, byte, 0000);
+MODULE_PARM_DESC(tx_gpio, 
+      "The GPIO pin to use for the transmitter, 0=disabled.  Can be changed via ioctl().");
+
+static unsigned char    rx_gpio = VWIRE_DEFAULT_RX_GPIO;
+module_param(rx_gpio, byte, 0000);
+MODULE_PARM_DESC(rx_gpio, 
+      "The GPIO pin to use for the receiver, 0=disabled.  Can be changed via ioctl().");
+
+static unsigned char    ptt_gpio = VWIRE_DEFAULT_PTT_GPIO;
+module_param(ptt_gpio, byte, 0000);
+MODULE_PARM_DESC(ptt_gpio, 
+      "The GPIO pin to use for PTT (push-to-transmit), 0=disabled.  Can be changed via ioctl().");
+
+static unsigned char    ptt_invert = VWIRE_DEFAULT_PTT_INVERT;
+module_param(ptt_invert, byte, 0000);
+MODULE_PARM_DESC(ptt_invert, 
+      "Invert the PTT signal.  Can be changed via ioctl().");
+
+static unsigned char    verbose = VWIRE_DEFAULT_VERBOSE_LOG;
+module_param(verbose, byte, 0000);
+MODULE_PARM_DESC(verbose, 
+      "Put more verbose debugging info to kernel log.  Can be changed via ioctl().");
+
 #if (LED_STATUS)
-static unsigned char led_gpio = 0;
+static unsigned char    led_gpio = VWIRE_DEFAULT_LED_GPIO;
+module_param(led_gpio, byte, 0000);
+MODULE_PARM_DESC(led_gpio, 
+      "The GPIO pin to use to drive a status LED, 0=disabled.  Can be changed via ioctl().");
 #endif
 
 /* High speed loop */
@@ -102,7 +130,17 @@ static int __init vwire_init_module(void)
    /* start receiving */
    vw_rx_start();
 
-   printk(KERN_INFO VWIRE_DRV_NAME ": Timer will fire callback in %ld nanosecs\n", DelayFromBaudrate(baudrate));
+   printk(KERN_INFO VWIRE_DRV_NAME 
+         ": VirualWire started: baudrate %d, tx_gpio %d, rx_gpio %d, ptt_gpio %d, ptt_invert %d, verbose %d, "
+#if LED_STATUS
+         "led_gpio: %d "
+#endif
+         "\n",
+         baudrate, tx_gpio, rx_gpio, ptt_gpio, ptt_invert, verbose
+#if LED_STATUS 
+         , led_gpio
+#endif
+         );
    return 0;  /* success */
 
 fail_timer:
@@ -131,26 +169,6 @@ static void __exit vwire_cleanup_module(void)
 module_init(vwire_init_module);
 module_exit(vwire_cleanup_module);
 
-/* user can adjust baudrate */
-module_param(baudrate, ushort, 0644);
-MODULE_PARM_DESC(baudrate, "The transmission speed in bits/sec, default 2000");
 
-module_param(rx_gpio, byte, 0644);
-MODULE_PARM_DESC(rx_gpio, "The GPIO pin to use for the receiver, 0=disabled");
-
-module_param(tx_gpio, byte, 0644);
-MODULE_PARM_DESC(tx_gpio, "The GPIO pin to use for the transmitter, 0=disabled");
-
-module_param(ptt_gpio, byte, 0644);
-MODULE_PARM_DESC(ptt_gpio, "The GPIO pin to use for PTT (push-to-transmit), 0=disabled");
-
-module_param(ptt_invert, byte, 0644);
-MODULE_PARM_DESC(ptt_invert, "Invert the PTT signal");
-
-module_param(led_gpio, byte, 0644);
-MODULE_PARM_DESC(led_gpio, "The GPIO pin to use to drive a status LED, 0=disabled");
-
-module_param(verbose, byte, 0644);
-MODULE_PARM_DESC(verbose, "Put more verbose debugging info to kernel log");
 
 

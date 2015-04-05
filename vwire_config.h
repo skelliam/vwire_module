@@ -12,9 +12,14 @@
 /* The textual part of the device name in /dev */
 #define VWIRE_DEV_NAME     "vwire"
 
+#define VWIRE_DEFAULT_BAUD_RATE   (2000)
+#define VWIRE_DEFAULT_RX_GPIO     (13)
+#define VWIRE_DEFAULT_TX_GPIO     (16)
+#define VWIRE_DEFAULT_LED_GPIO    (21)
+#define VWIRE_DEFAULT_PTT_GPIO    (0)
+#define VWIRE_DEFAULT_PTT_INVERT  (0)
+#define VWIRE_DEFAULT_VERBOSE_LOG (0)
 
-#define VW_RX_GPIO    (13)
-#define VW_LED_GPIO   (21)
 #define NSINSEC       (unsigned long)(1000000000)
 
 #define BAUD_MIN      (1000)  /* minimum allowed baudrate */
