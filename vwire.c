@@ -30,7 +30,6 @@ static struct gpio ptt;
 
 /* an led (optional) for debugging */
 static struct gpio led;
-static uint8_t LED_STATE = 0;
 
 static uint8_t vw_tx_buf[(VW_MAX_MESSAGE_LEN * 2) + VW_HEADER_LEN] = {0x2a, 0x2a, 0x2a, 0x2a, 0x2a, 0x2a, 0x38, 0x2c};
 

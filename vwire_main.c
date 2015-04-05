@@ -43,37 +43,37 @@ static struct hrtimer   vwire_sample_timer;  /* high res timer to sample gpio */
 static unsigned short   vwire_baudrate = VWIRE_DEFAULT_BAUD_RATE;  /* speed in bits per sec */
 module_param(vwire_baudrate, ushort, 0000);
 MODULE_PARM_DESC(vwire_baudrate, 
-      "The transmission speed in bits/sec, default 2000.  Can be changed via ioctl().");
+      "The transmission speed in bits/sec, default 2000.");
 
 static unsigned char    vwire_tx_gpio = VWIRE_DEFAULT_TX_GPIO;
 module_param(vwire_tx_gpio, byte, 0000);
 MODULE_PARM_DESC(vwire_tx_gpio, 
-      "The GPIO pin to use for the transmitter, 0=disabled.  Can be changed via ioctl().");
+      "The GPIO pin to use for the transmitter, 0=disabled.");
 
 static unsigned char    vwire_rx_gpio = VWIRE_DEFAULT_RX_GPIO;
 module_param(vwire_rx_gpio, byte, 0000);
 MODULE_PARM_DESC(vwire_rx_gpio, 
-      "The GPIO pin to use for the receiver, 0=disabled.  Can be changed via ioctl().");
+      "The GPIO pin to use for the receiver, 0=disabled.");
 
 static unsigned char    vwire_ptt_gpio = VWIRE_DEFAULT_PTT_GPIO;
 module_param(vwire_ptt_gpio, byte, 0000);
 MODULE_PARM_DESC(vwire_ptt_gpio, 
-      "The GPIO pin to use for PTT (push-to-transmit), 0=disabled.  Can be changed via ioctl().");
+      "The GPIO pin to use for PTT (push-to-transmit), 0=disabled.");
 
 static unsigned char    vwire_led_gpio = VWIRE_DEFAULT_LED_GPIO;
 module_param(vwire_led_gpio, byte, 0000);
 MODULE_PARM_DESC(vwire_led_gpio, 
-      "The GPIO pin to use to drive a status LED, 0=disabled.  Can be changed via ioctl().");
+      "The GPIO pin to use to drive a status LED, 0=disabled.");
 
 static unsigned char    vwire_ptt_invert = VWIRE_DEFAULT_PTT_INVERT;
 module_param(vwire_ptt_invert, byte, 0000);
 MODULE_PARM_DESC(vwire_ptt_invert, 
-      "Invert the PTT signal.  Can be changed via ioctl().");
+      "Invert the PTT signal.");
 
 static unsigned char    vwire_verbose = VWIRE_DEFAULT_VERBOSE_LOG;
 module_param(vwire_verbose, byte, 0000);
 MODULE_PARM_DESC(vwire_verbose, 
-      "Put more verbose debugging info to kernel log.  Can be changed via ioctl().");
+      "Put more verbose debugging info to kernel log.");
 
 
 /* High speed loop */
@@ -103,17 +103,17 @@ enum hrtimer_restart vwire_sample_timer_callback(struct hrtimer *timer)
 
 /* --- callback functions for sysfs */
 static ssize_t vwire_set_message(struct device *dev,
-                               struct device_attribute *attr,
-                               const char* buf,
-                               size_t count)
+                                 struct device_attribute *attr,
+                                 const char* buf,
+                                 size_t count)
 {
    printk(KERN_INFO VWIRE_DRV_NAME ": going to send message %s\n", buf);
    return count;
 }
 
 static ssize_t vwire_get_message(struct device *dev, 
-                                  struct device_attribute *attr,
-                                  char *buf)
+                                 struct device_attribute *attr,
+                                 char *buf)
 {
    unsigned char len = VWIRE_MAX_MESSAGE_LEN;  /* todo max here */
 
@@ -127,13 +127,41 @@ static ssize_t vwire_get_message(struct device *dev,
    return len;
 }
 
+static ssize_t vwire_set_verbose(struct device *dev,
+                                 struct device_attribute *attr,
+                                 const char* buf,
+                                 size_t count)
+{
+   long local_verbose = 0;
+
+   local_verbose = LimitErr(kstrtol(buf, 10, &local_verbose), 0, 1, -EINVAL);
+   if (local_verbose != -EINVAL) {
+      vwire_verbose = local_verbose;
+      printk(KERN_INFO VWIRE_DRV_NAME ": verbose kernel log messages are %s\n", (vwire_verbose ? "ON" : "OFF"));
+   }
+   else {
+      printk(KERN_INFO VWIRE_DRV_NAME ": invalid argument %ld for verbose kernel log messages.\n", local_verbose);
+   }
+
+   return count;
+}
+
+static ssize_t vwire_get_verbose(struct device *dev, 
+                                 struct device_attribute *attr,
+                                 char *buf)
+{
+   return scnprintf(buf, PAGE_SIZE, "%d\n", vwire_verbose);
+}
+
+
 /* --- end callback functions */
 
 
 
 /* --- define device attributes */
-static DEVICE_ATTR(outbox, S_IWUSR|S_IRUGO, NULL, vwire_set_message);
-static DEVICE_ATTR(inbox, S_IWUSR|S_IRUGO, vwire_get_message, NULL);
+static DEVICE_ATTR(outbox, 0644, NULL, vwire_set_message);
+static DEVICE_ATTR(inbox, 0644, vwire_get_message, NULL);
+static DEVICE_ATTR(verbose, 0644, vwire_get_verbose, vwire_set_verbose);
 
 
 /* --- end device attributes */
@@ -152,6 +180,7 @@ static int vwire_fs_init(void)
 
    err |= device_create_file(device_object, &dev_attr_inbox);
    err |= device_create_file(device_object, &dev_attr_outbox);
+   err |= device_create_file(device_object, &dev_attr_verbose);
 
    return err;
 }
@@ -160,6 +189,7 @@ static void vwire_fs_cleanup(void)
 {
    device_remove_file(device_object, &dev_attr_inbox);
    device_remove_file(device_object, &dev_attr_outbox);
+   device_remove_file(device_object, &dev_attr_verbose);
 
    device_destroy(device_class, 0);
    class_destroy(device_class);
