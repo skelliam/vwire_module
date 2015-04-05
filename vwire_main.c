@@ -159,9 +159,9 @@ static ssize_t vwire_get_verbose(struct device *dev,
 
 
 /* --- define device attributes */
-static DEVICE_ATTR(outbox, 0644, NULL, vwire_set_message);
-static DEVICE_ATTR(inbox, 0644, vwire_get_message, NULL);
-static DEVICE_ATTR(verbose, 0644, vwire_get_verbose, vwire_set_verbose);
+static DEVICE_ATTR(outbox, 0644, NULL, vwire_set_message);  /* write only */
+static DEVICE_ATTR(inbox, 0444, vwire_get_message, NULL);   /* read only */
+static DEVICE_ATTR(verbose, 0644, vwire_get_verbose, vwire_set_verbose);  /* root rw, others read */
 
 
 /* --- end device attributes */
